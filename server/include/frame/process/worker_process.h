@@ -1,5 +1,12 @@
-#include "frame/connection/ipc_connection.h"
+#include "common/connection/ipc_connection.h"
+#include "common/message/message.pb.h"
 #include "frame/process/process.h"
+#include "common/message/message.pb.h"
+#include <iostream>
+
+namespace common {
+class TcpConnection;
+}
 
 namespace frame {
 
@@ -24,9 +31,12 @@ public:
 private:
   void AsyncWaitForNewConnection();
   void HandleNewConnection();
+  void AsyncReceiveUserRequest(std::shared_ptr<common::TcpConnection> conn);
+  void HandleUserRequest(common::Message message);
 
   boost::asio::io_context io_context_;
-  IpcConnection ipc_conn_;
+  common::IpcConnection ipc_conn_;
+  std::vector<std::shared_ptr<common::TcpConnection>> client_connections_;
 };
 
 } // namespace frame

@@ -1,63 +1,59 @@
-#include <iostream>
 #include <arpa/inet.h>
 #include <cstring>
+#include <iostream>
 #include <sys/socket.h>
 #include <unistd.h>
-using namespace std;
 
+#include "common/connection/tcp_connection.h"
+#include "common/message/message.pb.h"
+
+using namespace std;
 #define MSG_LEN 128
 
-void error_handling(string message);
+int main(int argc, char *argv[]) {
+  int readlen, msglen;
+  /* TODO : need to get ip and port from tip file */
+  std::string address = "127.0.0.1";
+  uint16_t port = atoi(argv[1]);
 
-int main (int argc, char* argv[]) {
-	int sock;
-	sockaddr_in serv_addr;
-	char message[MSG_LEN];
-	int readlen, msglen;
-	/* TODO : need to get ip and port from tip file */
-	string serv_ip = "127.0.0.1";
-	uint16_t port = atoi(argv[1]);
+  boost::asio::io_context io_context;
+  common::TcpConnection conn(io_context);
+  conn.Connect(address, port);
 
-	sock = socket(PF_INET, SOCK_STREAM, 0);
-	if (sock == -1)
-		error_handling("socket() error");
+  cout << "Connected to MyDB2." << endl;
+  cout << endl;
 
-	memset(&serv_addr, 0x00, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = inet_addr(serv_ip.c_str());
-	serv_addr.sin_port = htons(port);
+  /* Connection Reply */
+  common::Message message;
+  message.set_type(common::MessageType::CONNECT_REQUEST);
+  message.mutable_connect_request()->set_username("mydb2");
+  message.mutable_connect_request()->set_password("test");
 
-	if (connect(sock, (sockaddr *)&serv_addr, sizeof(serv_addr)) == -1)
-		error_handling("connect() error");
+  std::string connect_msg;
+  if (!message.SerializeToString(&connect_msg)) {
+    std::cerr << "Failed to serialize the message." << std::endl;
+  }
+  conn.Write(connect_msg.c_str(), connect_msg.size());
 
-	cout << "Connected to MyDB2." << endl;
-	cout << endl;
-	while (true) {
-		string input;
-		string temp;
-		cout << "SQL> ";
-		getline(cin, temp);
+  while (true) {
+    string input;
+    string temp;
+    cout << "SQL> ";
+    getline(cin, temp);
 
-		if (temp == "q" || temp == "Q")
-			break;
-		input = temp;
-		if (temp.size() > 0 && temp[temp.size()-1] != ';') {
-			getline(cin, temp, ';');
-			cin.ignore(MSG_LEN, '\n');
-			input += " ";
-			input += temp;
-		}
-		//cout << input << endl;
-		if (input.size() == 1)
-			continue;
-
-		write(sock, input.c_str(), input.size());
-	}
-	close(sock);
-	return 0;
-}
-
-void error_handling(string message) {
-	cerr << message << endl;
-	exit(1);
+    if (temp == "q" || temp == "Q")
+      break;
+    input = temp;
+    if (temp.size() > 0 && temp[temp.size() - 1] != ';') {
+      getline(cin, temp, ';');
+      cin.ignore(MSG_LEN, '\n');
+      input += " ";
+      input += temp;
+    }
+    // cout << input << endl;
+    if (input.size() == 1)
+      continue;
+    conn.Write(input.c_str(), input.size());
+  }
+  return 0;
 }

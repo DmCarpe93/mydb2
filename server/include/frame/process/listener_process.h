@@ -1,5 +1,5 @@
-#include "frame/connection/ipc_connection.h"
-#include "frame/connection/tcp_connection.h"
+#include "common/connection/ipc_connection.h"
+#include "common/connection/tcp_connection.h"
 #include "frame/process/process.h"
 #include <iostream>
 
@@ -30,8 +30,8 @@ private:
 
   uint16_t listener_port_;
   boost::asio::io_context io_context_;
-  TcpConnection conn_;
-  IpcConnection ipc_conn_;
+  common::TcpConnection conn_;
+  common::IpcConnection ipc_conn_;
 };
 
 } // namespace frame

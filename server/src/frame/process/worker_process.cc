@@ -1,5 +1,6 @@
 #include "frame/process/worker_process.h"
-#include "frame/connection/tcp_connection.h"
+#include "common/connection/tcp_connection.h"
+
 #include <iostream>
 #include <memory>
 
@@ -37,7 +38,8 @@ void WorkerProcess::HandleNewConnection() {
   ::msghdr msg = {0};
 
   char *m_buffer = ipc_conn_.Buffer();
-  ::iovec io = {.iov_base = m_buffer, .iov_len = IpcConnection::kMaxBufferSize};
+  ::iovec io = {.iov_base = m_buffer,
+                .iov_len = common::IpcConnection::kMaxBufferSize};
   msg.msg_iov = &io;
   msg.msg_iovlen = 1;
 
@@ -60,19 +62,37 @@ void WorkerProcess::HandleNewConnection() {
   std::memcpy(&client_fd, data, sizeof(client_fd));
 
   std::cout << "Get Connection from client" << std::endl;
-  SetBlocking(client_fd);
-  TcpConnection conn(io_context_);
-  conn.Assign(client_fd);
-  /* TODO: Deliver client fd to worker thread*/
-  conn.ReadSome();
-  /*
-  char buffer[8192];
-  int readlen;
-  while ((readlen = ::read(client_fd, buffer, 8192)) > 0) {
-    buffer[readlen] = '\0';
-    std::cout << buffer << std::endl;
+  // SetBlocking(client_fd);
+  auto conn = std::make_shared<common::TcpConnection>(io_context_);
+  conn->Assign(client_fd);
+  client_connections_.push_back(conn);
+
+  AsyncReceiveUserRequest(conn);
+}
+
+void WorkerProcess::AsyncReceiveUserRequest(
+    std::shared_ptr<common::TcpConnection> conn) {
+  conn->AsyncReadSome([this, conn](const boost::system::error_code &error,
+                                   std::size_t bytes_transferred) {
+    std::string serialized_msg(conn->Buffer(), bytes_transferred);
+    common::Message message;
+    if (!message.ParseFromString(serialized_msg)) {
+      std::cerr << "Failed to deserialize the message." << std::endl;
+      return;
+    }
+    this->HandleUserRequest(message);
+    this->AsyncReceiveUserRequest(conn);
+  });
+}
+
+void WorkerProcess::HandleUserRequest(common::Message message) {
+  switch (message.type()) {
+  case common::MessageType::CONNECT_REQUEST:
+    std::cout << "CONNECTION REQUEST!" << std::endl;
+    break;
+  default:
+    std::cout << "SQL REQUEST!" << std::endl;
   }
-  */
 }
 
 } // namespace frame

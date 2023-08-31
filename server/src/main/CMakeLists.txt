@@ -1,5 +1,4 @@
-find_package(Boost COMPONENTS system program_options REQUIRED)
-include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${CMAKE_BINARY_DIR})
 
 add_executable(listener listener_main.cc)
 target_link_libraries(listener PUBLIC frame Boost::program_options)
