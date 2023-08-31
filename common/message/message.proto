@@ -1,0 +1,32 @@
+syntax = "proto3";
+package common;
+
+enum MessageType {
+  CONNECT_REQUEST = 0;
+  CONNECT_REPLY = 1;
+  EXECUTE_QUERY_REQUEST = 2;
+  EXECUTE_QUERY_REPLY = 3;
+  EXECUTE_DML_REQUEST = 4;
+  EXECUTE_DML_REPLY = 5;
+  EXECUTE_DDL_REQUEST = 6;
+  EXECUTE_DDL_REPLY = 7;
+  CLOSE_REQUEST = 8;
+  CLOSE_REPLY = 9;
+}
+
+message Message {
+  MessageType type = 1;
+  oneof data {
+    ConnectRequest connect_request = 3;
+    ConnectReply connect_reply = 4;  
+  }
+}
+
+message ConnectRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message ConnectReply {
+  int32 session_id = 1;
+}
