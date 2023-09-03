@@ -1,21 +1,9 @@
 #include "frame/process/worker_process.h"
 #include "common/connection/tcp_connection.h"
+#include "frame/task/task_builder.h"
 
 #include <iostream>
 #include <memory>
-
-void SetBlocking(int fd) {
-  int flags = fcntl(fd, F_GETFL, 0);
-  if (flags == -1) {
-    perror("fcntl - F_GETFL");
-    return;
-  }
-
-  if (fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) == -1) {
-    perror("fcntl - F_SETFL");
-    return;
-  }
-}
 
 namespace frame {
 
@@ -62,7 +50,6 @@ void WorkerProcess::HandleNewConnection() {
   std::memcpy(&client_fd, data, sizeof(client_fd));
 
   std::cout << "Get Connection from client" << std::endl;
-  // SetBlocking(client_fd);
   auto conn = std::make_shared<common::TcpConnection>(io_context_);
   conn->Assign(client_fd);
   client_connections_.push_back(conn);
@@ -85,14 +72,9 @@ void WorkerProcess::AsyncReceiveUserRequest(
   });
 }
 
-void WorkerProcess::HandleUserRequest(common::Message message) {
-  switch (message.type()) {
-  case common::MessageType::CONNECT_REQUEST:
-    std::cout << "CONNECTION REQUEST!" << std::endl;
-    break;
-  default:
-    std::cout << "SQL REQUEST!" << std::endl;
-  }
+void WorkerProcess::HandleUserRequest(const common::Message &message) {
+  auto task = TaskBuilder::CreateTask(message);
+  thread_pool_.EnqueueTask(std::move(task));
 }
 
 } // namespace frame
