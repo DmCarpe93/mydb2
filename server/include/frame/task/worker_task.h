@@ -1,5 +1,8 @@
 #ifndef FRAME_WORKER_TASK_H
+#define FRAME_WORKER_TASK_H
+
 #include "frame/task/task.h"
+#include <string>
 
 namespace common {
 class Message;
